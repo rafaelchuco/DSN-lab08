@@ -2,12 +2,18 @@ import React, { useState } from 'react'
 import Login from './pages/Login'
 import MFA from './pages/MFA'
 import Products from './pages/Products'
+import Dashboard from './pages/Dashboard'
+import Users from './pages/Users'
+import Roles from './pages/Roles'
+import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [mfaTempToken, setMfaTempToken] = useState(null)
   const [roles, setRoles] = useState([])
   const [user, setUser] = useState(null)
+  const [currentPage, setCurrentPage] = useState('dashboard')
 
   // fetch user info when token changes
   React.useEffect(() => {
@@ -25,6 +31,17 @@ export default function App() {
     fetchMe()
   }, [token])
 
+  // Handle hash navigation
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1) || 'dashboard'
+      setCurrentPage(hash)
+    }
+    handleHashChange()
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
   function handleLoginSuccess(tkn) {
     if (tkn.mfa_required) {
       setMfaTempToken(tkn.token)
@@ -40,11 +57,40 @@ export default function App() {
     setMfaTempToken(null)
   }
 
+  function handleLogout() {
+    localStorage.removeItem('token')
+    setToken(null)
+    setRoles([])
+    setUser(null)
+    setCurrentPage('dashboard')
+  }
+
   if (!token && mfaTempToken) {
     return <MFA tempToken={mfaTempToken} onSuccess={handleMfaSuccess} />
   }
 
   if (!token) return <Login onLogin={handleLoginSuccess} />
 
-  return <Products token={token} roles={roles} user={user} onLogout={() => { localStorage.removeItem('token'); setToken(null); setRoles([]); setUser(null) }} />
+  return (
+    <Layout user={user} roles={roles} onLogout={handleLogout}>
+      {currentPage === 'dashboard' && (
+        <Dashboard token={token} user={user} roles={roles} />
+      )}
+      {currentPage === 'products' && (
+        <ProtectedRoute roles={roles} requiredRoles={['Admin', 'Gerente', 'Empleado']}>
+          <Products token={token} roles={roles} user={user} onLogout={handleLogout} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'users' && (
+        <ProtectedRoute roles={roles} requiredRoles={['Admin']}>
+          <Users token={token} roles={roles} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'roles' && (
+        <ProtectedRoute roles={roles} requiredRoles={['Admin']}>
+          <Roles token={token} roles={roles} />
+        </ProtectedRoute>
+      )}
+    </Layout>
+  )
 }

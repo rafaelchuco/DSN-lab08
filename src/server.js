@@ -6,9 +6,13 @@ const rolesRoutes = require('./routes/roles');
 const usersRoutes = require('./routes/users');
 const productsRoutes = require('./routes/products');
 const config = require('./config');
+const { swaggerUi, specs } = require('./swagger');
 
 const app = express();
 app.use(bodyParser());
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
@@ -39,7 +43,10 @@ async function start() {
     console.log('Admin user created:', adminEmail);
   }
   const port = process.env.PORT || 4000;
-  app.listen(port, () => console.log(`Server listening on ${port}`));
+  app.listen(port, () => {
+    console.log(`Server listening on ${port}`);
+    console.log(`Swagger UI available at http://localhost:${port}/api-docs`);
+  });
 }
 
 start().catch(err => {

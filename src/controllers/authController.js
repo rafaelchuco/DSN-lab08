@@ -74,8 +74,34 @@ async function mfaVerify(req, res) {
     const user = await db.User.findByPk(payload.sub);
     if (!user || !user.mfa_secret) return res.status(400).json({ error: 'Usuario no encontrado o MFA no configurado' });
 
+    // Verificar bloqueo MFA
+    if (user.mfa_lock_until && new Date(user.mfa_lock_until) > new Date()) {
+      return res.status(423).json({ error: 'MFA bloqueado temporalmente. Intenta más tarde.' });
+    }
+
     const ok = verifyTOTP(user.mfa_secret, code);
-    if (!ok) return res.status(401).json({ error: 'Código MFA inválido' });
+    
+    if (!ok) {
+      user.mfa_failed_attempts = (user.mfa_failed_attempts || 0) + 1;
+      
+      if (user.mfa_failed_attempts >= 3) {
+        user.mfa_lock_until = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+        await user.save();
+        await logAction({ usuario_id: user.id, action: 'mfa_blocked', resource_type: 'User', resource_id: user.id, ip: req.ip });
+        return res.status(423).json({ error: 'Demasiados intentos fallidos. Cuenta MFA bloqueada por 15 minutos.' });
+      }
+      
+      await user.save();
+      await logAction({ usuario_id: user.id, action: 'mfa_failed', resource_type: 'User', resource_id: user.id, details: { attempts: user.mfa_failed_attempts }, ip: req.ip });
+      return res.status(401).json({ 
+        error: `Código MFA inválido. ${3 - user.mfa_failed_attempts} intentos restantes.` 
+      });
+    }
+
+    // Reset en caso de éxito
+    user.mfa_failed_attempts = 0;
+    user.mfa_lock_until = null;
+    await user.save();
 
     const fullToken = jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: config.jwtExpiry });
     await logAction({ usuario_id: user.id, action: 'mfa_success', resource_type: 'User', resource_id: user.id, ip: req.ip });

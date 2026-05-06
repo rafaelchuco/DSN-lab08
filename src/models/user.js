@@ -12,7 +12,9 @@ module.exports = (sequelize) => {
     activo: { type: DataTypes.BOOLEAN, defaultValue: true },
     fecha_creacion: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     failedLoginAttempts: { type: DataTypes.INTEGER, defaultValue: 0 },
-    lockUntil: { type: DataTypes.DATE, allowNull: true }
+    lockUntil: { type: DataTypes.DATE, allowNull: true },
+    mfa_failed_attempts: { type: DataTypes.INTEGER, defaultValue: 0 },
+    mfa_lock_until: { type: DataTypes.DATE, allowNull: true }
   }, {
     tableName: 'usuarios',
     timestamps: false
