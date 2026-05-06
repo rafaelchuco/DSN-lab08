@@ -11,8 +11,8 @@ RUN npm install
 # Copiar código fuente
 COPY . .
 
-# Exponer puerto
-EXPOSE 4000
+# Exponer puerto de Vite
+EXPOSE 5173
 
-# Comando para iniciar en modo desarrollo con nodemon
-CMD ["npm", "run", "dev"]
+# Comando para iniciar Vite en modo desarrollo
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

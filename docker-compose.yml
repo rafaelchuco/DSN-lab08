@@ -17,6 +17,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - techstore-network
 
   backend:
     build: 
@@ -32,13 +34,38 @@ services:
       DB_NAME: techstore
       DB_USER: techstore_user
       DB_PASSWORD: techstore_pass
-      JWT_SECRET: production_secret_change_me
-      NODE_ENV: production
+      JWT_SECRET: production_secret_change_me_in_production
+      NODE_ENV: development
+      PORT: 4000
     ports:
       - "4000:4000"
     volumes:
       - ./src:/app/src
-      - ./node_modules:/app/node_modules
+    networks:
+      - techstore-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: techstore-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://backend:4000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/index.html:/app/index.html
+    networks:
+      - techstore-network
+    restart: unless-stopped
 
 volumes:
   pgdata:
+
+networks:
+  techstore-network:
+    driver: bridge
