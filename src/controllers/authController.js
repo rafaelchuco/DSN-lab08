@@ -123,4 +123,49 @@ async function enableMfa(req, res) {
   return res.json({ secret: secret.otpauth_url, base32: secret.base32 });
 }
 
-module.exports = { register, login, mfaVerify, enableMfa };
+async function disableMfa(req, res) {
+  const userId = req.userId;
+  const { code } = req.body;
+  
+  if (!code) return res.status(400).json({ error: 'Se requiere código MFA para desactivar' });
+  
+  const user = await db.User.findByPk(userId);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  if (!user.mfa_enabled) return res.status(400).json({ error: 'MFA no está habilitado' });
+  
+  // Verificar código antes de desactivar
+  const ok = verifyTOTP(user.mfa_secret, code);
+  if (!ok) {
+    await logAction({ usuario_id: user.id, action: 'mfa_disable_failed', resource_type: 'User', resource_id: user.id, ip: req.ip });
+    return res.status(401).json({ error: 'Código MFA inválido' });
+  }
+  
+  user.mfa_secret = null;
+  user.mfa_enabled = false;
+  user.mfa_failed_attempts = 0;
+  user.mfa_lock_until = null;
+  await user.save();
+  
+  await logAction({ usuario_id: user.id, action: 'mfa_disable', resource_type: 'User', resource_id: user.id, ip: req.ip });
+  return res.json({ message: 'MFA desactivado exitosamente' });
+}
+
+async function verifyMfaSetup(req, res) {
+  const userId = req.userId;
+  const { code } = req.body;
+  
+  if (!code) return res.status(400).json({ error: 'Se requiere código MFA' });
+  
+  const user = await db.User.findByPk(userId);
+  if (!user || !user.mfa_secret) return res.status(400).json({ error: 'MFA no configurado' });
+  
+  const ok = verifyTOTP(user.mfa_secret, code);
+  if (!ok) {
+    return res.status(401).json({ error: 'Código MFA inválido' });
+  }
+  
+  await logAction({ usuario_id: user.id, action: 'mfa_setup_verified', resource_type: 'User', resource_id: user.id, ip: req.ip });
+  return res.json({ message: 'Código verificado exitosamente', verified: true });
+}
+
+module.exports = { register, login, mfaVerify, enableMfa, disableMfa, verifyMfaSetup };

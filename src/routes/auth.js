@@ -185,4 +185,60 @@ router.post('/mfa/verify', auth.mfaVerify);
  */
 router.post('/mfa/enable', authMiddleware.optionalAuth, auth.enableMfa);
 
+/**
+ * @swagger
+ * /api/auth/mfa/disable:
+ *   post:
+ *     summary: Desactivar MFA para el usuario autenticado
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: Código TOTP actual para confirmar desactivación
+ *     responses:
+ *       200:
+ *         description: MFA desactivado exitosamente
+ *       401:
+ *         description: Código inválido
+ */
+router.post('/mfa/disable', authMiddleware.optionalAuth, auth.disableMfa);
+
+/**
+ * @swagger
+ * /api/auth/mfa/verify-setup:
+ *   post:
+ *     summary: Verificar código MFA durante la configuración inicial
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: Código TOTP de 6 dígitos
+ *     responses:
+ *       200:
+ *         description: Código verificado correctamente
+ *       401:
+ *         description: Código inválido
+ */
+router.post('/mfa/verify-setup', authMiddleware.optionalAuth, auth.verifyMfaSetup);
+
 module.exports = router;
