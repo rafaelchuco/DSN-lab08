@@ -5,6 +5,7 @@ import Products from './pages/Products'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import Roles from './pages/Roles'
+import AuditLogs from './pages/AuditLogs'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -89,6 +90,11 @@ export default function App() {
       {currentPage === 'roles' && (
         <ProtectedRoute roles={roles} requiredRoles={['Admin']}>
           <Roles token={token} roles={roles} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'audit' && (
+        <ProtectedRoute roles={roles} requiredRoles={['Auditor', 'Admin']}>
+          <AuditLogs token={token} roles={roles} />
         </ProtectedRoute>
       )}
     </Layout>

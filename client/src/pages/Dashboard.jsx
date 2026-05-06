@@ -58,8 +58,8 @@ export default function Dashboard({ token, user, roles }) {
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>📊 Dashboard</h1>
-        <p>Bienvenido, {user.nombre_completo}</p>
-        {user.tienda_id && <p className="tienda-info">Tienda: <strong>{user.tienda_id}</strong></p>}
+        <p>Bienvenido, {user?.nombre_completo || 'Usuario'}</p>
+        {user?.tienda_id && <p className="tienda-info">Tienda: <strong>{user.tienda_id}</strong></p>}
       </div>
 
       <div className="stats-grid">
