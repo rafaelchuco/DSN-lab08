@@ -1,0 +1,7 @@
+body { font-family: Arial, sans-serif; background:#f6f8fa; color:#111 }
+.container { max-width:640px; margin:40px auto; background:#fff; padding:20px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.06) }
+label { display:block; margin-top:12px; font-weight:600 }
+input { width:100%; padding:8px; margin-top:6px; box-sizing:border-box }
+button { margin-top:12px; padding:8px 12px }
+.error { background:#ffe6e6; color:#900; padding:8px; border-radius:4px }
+.header { display:flex; justify-content:space-between; align-items:center }
