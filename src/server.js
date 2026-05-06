@@ -22,6 +22,7 @@ app.use('/api/products', productsRoutes);
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 async function start() {
+  console.log('🔧 Sequelize config:', JSON.stringify(config.sequelize, null, 2));
   await db.sequelize.sync({ alter: true });
 
   // Seed default roles

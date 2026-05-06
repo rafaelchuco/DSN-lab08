@@ -1,11 +1,8 @@
 const { Sequelize } = require('sequelize');
 const config = require('../config');
 
-const sequelize = new Sequelize({
-  dialect: config.sequelize.dialect,
-  storage: config.sequelize.storage,
-  logging: false
-});
+// Pasar toda la configuración de Sequelize
+const sequelize = new Sequelize(config.sequelize);
 
 const db = {};
 db.Sequelize = Sequelize;

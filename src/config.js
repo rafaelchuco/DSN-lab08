@@ -11,10 +11,13 @@ const sequelizeConfig = {
   postgres: {
     dialect: 'postgres',
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
+    port: parseInt(process.env.DB_PORT || '5432'),
     database: process.env.DB_NAME || 'techstore',
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
+    dialectOptions: {
+      connectTimeout: 60000
+    },
     pool: {
       max: 10,
       min: 2,
