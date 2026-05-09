@@ -1,155 +1,290 @@
-# 🔐 Usuarios de Prueba - TechStore
+# TechStore — Usuarios de Prueba y Escenarios RBAC/ABAC
 
-## Acceso al Sistema
-**URL Frontend:** http://localhost:5174
-**URL API:** http://localhost:4000
-**URL Swagger:** http://localhost:4000/api-docs
+> Credenciales para probar todos los roles y validar las políticas de acceso implementadas.
+
+## URLs del Sistema
+
+| Servicio | URL |
+|---------|-----|
+| **Frontend** | http://localhost:5174 |
+| **API REST** | http://localhost:4000 |
+| **Swagger UI** | http://localhost:4000/api-docs |
+| **Health Check** | http://localhost:4000/health |
 
 ---
 
-## 👑 ROL ADMIN
-Acceso completo al sistema: usuarios, roles, productos, auditoría
+## Credenciales por Rol
 
-| Email | Contraseña | Tienda | Descripción |
-|-------|-----------|---------|-------------|
-| admin@techstore.com | `Admin123!` | - | Administrador principal |
+### Administrador
+
+**Acceso total al sistema sin restricciones**
+
+| Email | Contraseña | Tienda |
+|-------|-----------|--------|
+| `admin@techstore.com` | `Admin123!` | — |
 
 **Permisos:**
-- ✅ Gestión completa de usuarios
-- ✅ Gestión completa de roles
-- ✅ CRUD completo de productos (sin restricciones)
-- ✅ Ver auditoría del sistema
+- Gestión completa de usuarios (CRUD + asignación de roles)
+- Gestión completa de roles (CRUD)
+- CRUD total de productos en cualquier tienda
+- Crear, actualizar y eliminar productos premium
+- Ver logs de auditoría del sistema
+- Acceso a todas las páginas del frontend
 
 ---
 
-## 👔 ROL GERENTE
-Gestión de productos en su tienda
+### Gerente de Tienda
+
+**Gestión de productos restringida a su tienda**
 
 | Email | Contraseña | Tienda | Descripción |
-|-------|-----------|---------|-------------|
-| gerente@techstore.com | `Gerente123!` | Lima | Gerente tienda Lima |
-| gerente.arequipa@techstore.com | `Gerente123!` | Arequipa | Gerente tienda Arequipa |
+|-------|-----------|--------|-------------|
+| `gerente@techstore.com` | `Gerente123!` | Lima | Gerente tienda Lima |
+| `gerente.arequipa@techstore.com` | `Gerente123!` | Arequipa | Gerente tienda Arequipa |
 
 **Permisos (ABAC):**
-- ✅ Crear productos en su tienda
-- ✅ Actualizar productos de su tienda
-- ✅ Eliminar productos NO premium de su tienda
-- ❌ No puede eliminar productos premium
-- ❌ No puede modificar la categoría de productos
+- Ver productos de su tienda
+- Crear productos en su tienda (solo no-premium)
+- Actualizar productos de su tienda (excepto campo `categoria`)
+- Eliminar productos no-premium de su tienda
+- No puede crear ni eliminar productos premium
+- No puede gestionar usuarios ni roles
+- No puede ver logs de auditoría
 
 ---
 
-## 🛒 ROL EMPLEADO
-Actualización de stock únicamente
+### Empleado de Ventas
+
+**Solo actualización de stock**
 
 | Email | Contraseña | Tienda | Descripción |
-|-------|-----------|---------|-------------|
-| empleado@techstore.com | `Empleado123!` | Lima | Empleado tienda Lima |
-| empleado.cusco@techstore.com | `Empleado123!` | Cusco | Empleado tienda Cusco |
+|-------|-----------|--------|-------------|
+| `empleado@techstore.com` | `Empleado123!` | Lima | Empleado tienda Lima |
+| `empleado.cusco@techstore.com` | `Empleado123!` | Cusco | Empleado tienda Cusco |
 
 **Permisos (ABAC):**
-- ✅ Actualizar stock de productos
-- ❌ No puede crear productos
-- ❌ No puede eliminar productos
-- ❌ No puede crear productos premium
-- ❌ Solo lectura en otros campos
+- Ver productos de su tienda (solo lectura)
+- Actualizar únicamente el campo `stock` en su tienda
+- No puede crear productos
+- No puede eliminar productos
+- No puede modificar precio, categoría ni nombre
+- No puede gestionar usuarios ni roles
 
 ---
 
-## 📋 ROL AUDITOR
-Solo lectura + acceso a auditoría
+### Auditor
+
+**Solo lectura de todos los datos**
 
 | Email | Contraseña | Tienda | Descripción |
-|-------|-----------|---------|-------------|
-| auditor@techstore.com | `Auditor123!` | Oficina Central | Auditor principal |
-| auditor.sistemas@techstore.com | `Auditor123!` | Oficina Central | Auditor de sistemas |
+|-------|-----------|--------|-------------|
+| `auditor@techstore.com` | `Auditor123!` | Oficina Central | Auditor principal |
+| `auditor.sistemas@techstore.com` | `Auditor123!` | Oficina Central | Auditor de sistemas |
 
 **Permisos:**
-- ✅ Ver dashboard (solo lectura)
-- ✅ Ver página de auditoría
-- ❌ No puede modificar nada
-- ❌ No puede acceder a gestión de usuarios/roles
+- Ver productos de TODAS las tiendas (solo lectura)
+- Ver logs de auditoría del sistema
+- Ver dashboard con estadísticas
+- No puede crear, editar ni eliminar nada
+- No puede acceder a gestión de usuarios ni roles
 
 ---
 
-## 🧪 Pruebas RBAC/ABAC Sugeridas
+## Tabla Resumen de Permisos
 
-### Test 1: Admin
-1. Login como `admin@techstore.com`
-2. Verificar acceso a Usuarios, Roles, Productos
-3. Crear un producto premium en cualquier tienda
+```
+                        Admin  Gerente  Empleado  Auditor
+                          │       │        │        │
+PÁGINAS DEL FRONTEND:
+  Dashboard               ✅      ✅       ✅       ✅
+  Productos               ✅      ✅       ✅       ✅
+  Usuarios                ✅      ❌       ❌       ❌
+  Roles                   ✅      ❌       ❌       ❌
+  Auditoría               ✅      ❌       ❌       ✅
 
-### Test 2: Gerente
-1. Login como `gerente@techstore.com`
-2. Verificar que solo ve Dashboard y Productos
-3. Crear un producto en Lima (debe funcionar)
-4. Intentar crear producto premium (debe fallar)
-5. Intentar eliminar producto premium (debe fallar)
-
-### Test 3: Empleado
-1. Login como `empleado@techstore.com`
-2. Solo puede actualizar stock de productos
-3. No puede crear ni eliminar
-
-### Test 4: Auditor
-1. Login como `auditor@techstore.com`
-2. Acceso a Dashboard (solo lectura)
-3. Acceso a página de Auditoría
-4. No puede modificar nada
-
----
-
-## 🔒 Seguridad MFA
-
-Para habilitar MFA en cualquier usuario:
-1. Login como Admin
-2. Ir a Usuarios
-3. Hacer clic en el usuario
-4. Habilitar MFA
-
-**Nota:** El sistema bloqueará después de 3 intentos fallidos de MFA por 15 minutos.
-
----
-
-## 📊 Logs de Auditoría
-
-Todos los eventos se registran en la tabla `audit_logs`:
-- ✅ Login exitoso/fallido
-- ✅ Registro de usuarios
-- ✅ Creación/actualización/eliminación de usuarios
-- ✅ Asignación de roles
-- ✅ CRUD de productos
-- ✅ Eventos MFA (habilitación, verificación, bloqueos)
-- ✅ Cambios en roles
-
-Para ver los logs reales, se necesita implementar el endpoint `GET /api/audit-logs` en el backend.
-
----
-
-## 🐳 Comandos Docker
-
-```bash
-# Ver estado de contenedores
-docker-compose ps
-
-# Ver logs del backend
-docker-compose logs -f backend
-
-# Ver logs del frontend
-docker-compose logs -f frontend
-
-# Reiniciar todos los servicios
-docker-compose restart
-
-# Detener todos los servicios
-docker-compose down
-
-# Ver datos en PostgreSQL
-docker exec techstore-postgres psql -U techstore_user -d techstore -c "SELECT * FROM usuarios;"
-docker exec techstore-postgres psql -U techstore_user -d techstore -c "SELECT * FROM usuario_roles ur JOIN roles r ON ur.rol_id = r.id;"
+PRODUCTOS — OPERACIONES:
+  Ver (su tienda)         ✅      ✅       ✅       ✅
+  Ver (todas las tiendas) ✅      ❌       ❌       ✅
+  Crear (su tienda)       ✅      ✅       ❌       ❌
+  Crear (premium)         ✅      ❌       ❌       ❌
+  Editar (su tienda)      ✅      ✅       ❌       ❌
+  Editar solo stock       ✅      ✅       ✅       ❌
+  Eliminar (no premium)   ✅      ✅       ❌       ❌
+  Eliminar (premium)      ✅      ❌       ❌       ❌
 ```
 
 ---
 
-**Fecha de creación:** 6 de mayo de 2026
-**Proyecto:** DSN-lab08 - TechStore Inventory System
+## Escenarios de Prueba Recomendados
+
+### Escenario 1: Flujo de Admin
+
+```
+1. Abrir http://localhost:5174
+2. Login: admin@techstore.com / Admin123!
+3. Verificar acceso a TODAS las páginas del menú lateral
+4. Ir a "Usuarios" → Crear un nuevo usuario con tienda "Lima"
+5. Ir a "Roles" → Verificar que aparecen los 4 roles
+6. Ir a "Productos" → Crear un producto premium para cualquier tienda
+7. Editar el producto y cambiar la categoría (debe funcionar)
+8. Eliminar el producto premium (debe funcionar)
+9. Ir a "Auditoría" → Ver el registro de todas las acciones anteriores
+```
+
+**Resultado esperado:** Admin puede realizar todas las operaciones sin restricciones.
+
+---
+
+### Escenario 2: Restricciones del Gerente
+
+```
+1. Login: gerente@techstore.com / Gerente123!
+2. Verificar que el menú NO muestra "Usuarios" ni "Roles"
+3. Ir a "Productos" → Solo debe ver productos de "Lima"
+4. Crear un producto en Lima con es_premium = false → DEBE FUNCIONAR
+5. Crear un producto con es_premium = true → DEBE FALLAR (403 Forbidden)
+6. Editar un producto existente → Cambiar nombre y precio → DEBE FUNCIONAR
+7. Editar un producto → Intentar cambiar la categoría → DEBE FALLAR
+8. Eliminar un producto no-premium de Lima → DEBE FUNCIONAR
+9. Intentar eliminar un producto premium → DEBE FALLAR
+```
+
+**Resultado esperado:** El Gerente opera solo en su tienda con restricciones de premium.
+
+---
+
+### Escenario 3: Limitaciones del Empleado
+
+```
+1. Login: empleado@techstore.com / Empleado123!
+2. Verificar que el menú solo muestra Dashboard y Productos
+3. Ir a "Productos" → Solo debe ver productos de "Lima"
+4. Intentar crear un producto → Debe recibir error 403
+5. Hacer clic en "Editar" en un producto existente
+6. Modificar el campo "stock" → DEBE FUNCIONAR
+7. Modificar el campo "precio" → DEBE FALLAR
+8. Modificar el campo "nombre" → DEBE FALLAR
+9. Intentar eliminar un producto → DEBE FALLAR
+```
+
+**Resultado esperado:** El Empleado solo puede actualizar el stock.
+
+---
+
+### Escenario 4: Auditor de Solo Lectura
+
+```
+1. Login: auditor@techstore.com / Auditor123!
+2. Verificar que el menú muestra: Dashboard, Productos, Auditoría
+3. Ir a "Productos" → Debe ver productos de TODAS las tiendas
+4. Verificar que no hay botones de Crear, Editar ni Eliminar
+5. Cualquier intento de modificación debe retornar 403
+6. Ir a "Auditoría" → Ver logs de las acciones de los escenarios anteriores
+```
+
+**Resultado esperado:** El Auditor tiene acceso de solo lectura en todos los módulos habilitados.
+
+---
+
+### Escenario 5: Prueba de MFA
+
+```
+1. Login: admin@techstore.com / Admin123!
+2. Ir al perfil y activar MFA
+3. Escanear el QR con Google Authenticator
+4. Cerrar sesión
+5. Login nuevamente → Sistema pide código MFA
+6. Ingresar código correcto → Acceso concedido
+7. Volver a hacer login e ingresar un código incorrecto
+8. Repetir 3 veces → Debe mostrar "MFA bloqueado por 15 minutos"
+```
+
+**Resultado esperado:** MFA funciona correctamente con bloqueo tras 3 intentos fallidos.
+
+---
+
+### Escenario 6: Bloqueo de Cuenta por Login
+
+```
+1. Intentar login con email válido pero contraseña incorrecta
+2. Repetir 5 veces → Debe mostrar mensaje de cuenta bloqueada
+3. Esperar 15 minutos o reiniciar el backend
+4. Hacer login con credenciales correctas → Acceso concedido
+```
+
+**Resultado esperado:** La cuenta se bloquea tras 5 intentos fallidos.
+
+---
+
+### Escenario 7: Aislamiento entre Tiendas
+
+```
+1. Login como gerente@techstore.com (Lima)
+2. Verificar que SOLO ve productos de Lima
+3. Login como gerente.arequipa@techstore.com (Arequipa)
+4. Verificar que SOLO ve productos de Arequipa
+5. Cada gerente opera de forma completamente independiente
+```
+
+**Resultado esperado:** El aislamiento entre tiendas funciona correctamente por ABAC.
+
+---
+
+### Escenario 8: Prueba via Swagger UI
+
+```
+1. Abrir http://localhost:4000/api-docs
+2. Ejecutar POST /api/auth/login con credenciales de admin
+3. Copiar el token de la respuesta
+4. Hacer clic en "Authorize" → ingresar "Bearer <token>"
+5. Probar GET /api/products → Ver todos los productos
+6. Probar POST /api/products → Crear un producto
+7. Ahora hacer login como empleado y repetir el POST /api/products
+   → Debe retornar 403 Forbidden
+```
+
+---
+
+## Probar la API con curl
+
+```bash
+# Obtener token de admin
+TOKEN=$(curl -s -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@techstore.com","password":"Admin123!"}' \
+  | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+# Listar productos (como admin)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/products
+
+# Crear producto (como admin)
+curl -X POST http://localhost:4000/api/products \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nombre": "Laptop Gaming Pro",
+    "descripcion": "Laptop de alto rendimiento",
+    "precio": 2499.99,
+    "stock": 10,
+    "categoria": "Laptops",
+    "tienda_id": "Lima",
+    "es_premium": false
+  }'
+
+# Listar usuarios (como admin)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/users
+
+# Listar roles
+curl -H "Authorization: Bearer $TOKEN" http://localhost:4000/api/roles
+```
+
+---
+
+## Referencia
+
+| Documento | Descripción |
+|----------|-------------|
+| [README.md](./README.md) | Documentación principal del proyecto |
+| [DOCKER_SETUP.md](./DOCKER_SETUP.md) | Guía de Docker y comandos |
+| [src/README.md](./src/README.md) | Documentación de la API backend |
+| [client/README.md](./client/README.md) | Documentación del frontend |
