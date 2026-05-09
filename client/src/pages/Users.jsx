@@ -76,6 +76,18 @@ export default function Users({ token, roles }) {
     }
   }
 
+  async function toggleMfaRequired(userId, currentRequired) {
+    try {
+      await axios.put(`/api/users/${userId}/mfa-required`,
+        { required: !currentRequired },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      fetchData()
+    } catch (err) {
+      alert(err.response?.data?.error || err.message)
+    }
+  }
+
   if (!roles.includes('Admin')) {
     return <div className="access-denied">Solo Admin puede gestionar usuarios</div>
   }
@@ -145,6 +157,7 @@ export default function Users({ token, roles }) {
               <th>Nombre</th>
               <th>Tienda</th>
               <th>MFA</th>
+              <th>Req. MFA</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -157,6 +170,7 @@ export default function Users({ token, roles }) {
                 <td>{user.nombre_completo}</td>
                 <td>{user.tienda_id || '-'}</td>
                 <td>{user.mfa_enabled ? '✅' : '❌'}</td>
+                <td>{user.mfa_required ? '✅' : '❌'}</td>
                 <td>
                   <span className={`badge ${user.activo ? 'active' : 'inactive'}`}>
                     {user.activo ? 'Activo' : 'Inactivo'}
@@ -177,6 +191,13 @@ export default function Users({ token, roles }) {
                     className="btn-small"
                   >
                     {user.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button
+                    onClick={() => toggleMfaRequired(user.id, !!user.mfa_required)}
+                    className={`btn-mfa ${user.mfa_required ? 'active' : ''}`}
+                    title={user.mfa_required ? 'Quitar requisito MFA' : 'Exigir MFA para este usuario'}
+                  >
+                    {user.mfa_required ? 'Quitar Req. MFA' : 'Exigir MFA'}
                   </button>
                 </td>
               </tr>

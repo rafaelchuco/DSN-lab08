@@ -25,6 +25,10 @@ async function start() {
   console.log('🔧 Sequelize config:', JSON.stringify(config.sequelize, null, 2));
   await db.sequelize.sync({ alter: true });
 
+  // Desactivar MFA para todos los usuarios
+  await db.User.update({ mfa_required: false, mfa_enabled: false }, { where: {} });
+  console.log('✓ MFA desactivado para todos los usuarios');
+
   // Seed default roles
   const defaultRoles = ['Admin', 'Gerente', 'Empleado', 'Auditor'];
   for (const nombre of defaultRoles) {

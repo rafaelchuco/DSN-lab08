@@ -1,7 +1,11 @@
 const speakeasy = require('speakeasy');
 
-function generateSecret() {
-  return speakeasy.generateSecret({ length: 20 });
+function generateSecret(userEmail, userName) {
+  return speakeasy.generateSecret({
+    length: 20,
+    name: `${userName} (${userEmail})`,
+    issuer: 'TechStore'
+  });
 }
 
 function generateTOTP(secret) {

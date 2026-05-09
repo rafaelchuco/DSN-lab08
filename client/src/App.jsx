@@ -16,19 +16,25 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [currentPage, setCurrentPage] = useState('dashboard')
 
+  async function fetchMe() {
+    if (!token) {
+      setRoles([])
+      setUser(null)
+      return
+    }
+    try {
+      const res = await fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      if (res.ok) setRoles(data.roles || [])
+      if (res.ok) setUser(data.user || null)
+    } catch (err) {
+      setRoles([])
+      setUser(null)
+    }
+  }
+
   // fetch user info when token changes
   React.useEffect(() => {
-    async function fetchMe() {
-      if (!token) return setRoles([])
-      try {
-        const res = await fetch('/api/users/me', { headers: { Authorization: `Bearer ${token}` } })
-        const data = await res.json()
-        if (res.ok) setRoles(data.roles || [])
-        if (res.ok) setUser(data.user || null)
-      } catch (err) {
-        setRoles([])
-      }
-    }
     fetchMe()
   }, [token])
 
@@ -46,6 +52,11 @@ export default function App() {
   function handleLoginSuccess(tkn) {
     if (tkn.mfa_required) {
       setMfaTempToken(tkn.token)
+      return
+    }
+    if (tkn.mfa_setup_required) {
+      localStorage.setItem('token', tkn.token)
+      setToken(tkn.token)
       return
     }
     localStorage.setItem('token', tkn.token)
@@ -75,7 +86,7 @@ export default function App() {
   return (
     <Layout user={user} roles={roles} onLogout={handleLogout}>
       {currentPage === 'dashboard' && (
-        <Dashboard token={token} user={user} roles={roles} />
+        <Dashboard token={token} user={user} roles={roles} onUserRefresh={fetchMe} />
       )}
       {currentPage === 'products' && (
         <ProtectedRoute roles={roles} requiredRoles={['Admin', 'Gerente', 'Empleado']}>

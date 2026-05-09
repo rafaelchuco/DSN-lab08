@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
+import MFAModal from '../components/MFAModal'
 
-export default function Dashboard({ token, user, roles }) {
+export default function Dashboard({ token, user, roles, onUserRefresh }) {
   const [stats, setStats] = useState({
     totalProducts: 0,
     lowStock: 0,
@@ -11,6 +12,7 @@ export default function Dashboard({ token, user, roles }) {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showMFAModal, setShowMFAModal] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -60,6 +62,22 @@ export default function Dashboard({ token, user, roles }) {
         <h1>📊 Dashboard</h1>
         <p>Bienvenido, {user?.nombre_completo || 'Usuario'}</p>
         {user?.tienda_id && <p className="tienda-info">Tienda: <strong>{user.tienda_id}</strong></p>}
+        <div style={{ marginTop: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <span className={`badge ${user?.mfa_enabled ? 'active' : 'inactive'}`}>
+            MFA {user?.mfa_enabled ? 'Activo' : 'Inactivo'}
+          </span>
+          <button
+            onClick={() => setShowMFAModal(true)}
+            className={`btn-mfa ${user?.mfa_enabled ? 'active' : ''}`}
+          >
+            {user?.mfa_enabled ? 'Desactivar MFA' : 'Activar MFA'}
+          </button>
+        </div>
+        {user?.mfa_required && !user?.mfa_enabled && (
+          <div className="error" style={{ marginTop: '10px' }}>
+            Tu administrador exige MFA para esta cuenta. Activa MFA para cumplir la política.
+          </div>
+        )}
       </div>
 
       <div className="stats-grid">
@@ -71,7 +89,7 @@ export default function Dashboard({ token, user, roles }) {
             <p className="stat-label">
               {roles.includes('Admin') || roles.includes('Auditor') 
                 ? 'En todas las tiendas' 
-                : `En tienda ${user.tienda_id}`}
+                : `En tienda ${user?.tienda_id || '-'}`}
             </p>
           </div>
         </div>
@@ -139,6 +157,19 @@ export default function Dashboard({ token, user, roles }) {
             )}
           </ul>
         </div>
+      )}
+
+      {showMFAModal && user && (
+        <MFAModal
+          token={token}
+          user={user}
+          onClose={() => setShowMFAModal(false)}
+          onSuccess={async () => {
+            setShowMFAModal(false)
+            await fetchDashboardData()
+            if (onUserRefresh) await onUserRefresh()
+          }}
+        />
       )}
     </div>
   )

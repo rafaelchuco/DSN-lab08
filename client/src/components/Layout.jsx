@@ -1,25 +1,27 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 export default function Layout({ children, user, roles, onLogout }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="app-layout">
       <nav className="navbar">
         <div className="navbar-brand">
-          <h1>🏪 TechStore</h1>
+          <h1>🏪 TechStore Pro</h1>
         </div>
         <div className="navbar-menu">
-          <a href="#dashboard">Dashboard</a>
+          <a href="#dashboard">📊 Dashboard</a>
           {(roles.includes('Admin') || roles.includes('Gerente') || roles.includes('Empleado')) && (
-            <a href="#products">Productos</a>
+            <a href="#products">📦 Productos</a>
           )}
           {roles.includes('Admin') && (
             <>
-              <a href="#users">Usuarios</a>
-              <a href="#roles">Roles</a>
+              <a href="#users">👥 Usuarios</a>
+              <a href="#roles">🔐 Roles</a>
             </>
           )}
           {roles.includes('Auditor') && (
-            <a href="#audit">Auditoría</a>
+            <a href="#audit">📋 Auditoría</a>
           )}
         </div>
         <div className="navbar-user">

@@ -54,6 +54,11 @@ async function login(req, res) {
 
   await logAction({ usuario_id: user.id, action: 'login_success', resource_type: 'User', resource_id: user.id, ip: req.ip });
 
+  if (user.mfa_required && !user.mfa_enabled) {
+    const setupToken = jwt.sign({ sub: user.id, mfa_setup: true }, config.jwtSecret, { expiresIn: config.jwtMfaTempExpiry });
+    return res.status(200).json({ mfa_setup_required: true, token: setupToken });
+  }
+
   if (user.mfa_enabled && user.mfa_secret) {
     // return temporary token indicating MFA required
     const temp = jwt.sign({ sub: user.id, mfa: true }, config.jwtSecret, { expiresIn: config.jwtMfaTempExpiry });
@@ -115,7 +120,7 @@ async function enableMfa(req, res) {
   const userId = req.userId;
   const user = await db.User.findByPk(userId);
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-  const secret = generateSecret();
+  const secret = generateSecret(user.email, user.nombre_completo);
   user.mfa_secret = secret.base32;
   user.mfa_enabled = true;
   await user.save();

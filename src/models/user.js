@@ -14,7 +14,8 @@ module.exports = (sequelize) => {
     failedLoginAttempts: { type: DataTypes.INTEGER, defaultValue: 0 },
     lockUntil: { type: DataTypes.DATE, allowNull: true },
     mfa_failed_attempts: { type: DataTypes.INTEGER, defaultValue: 0 },
-    mfa_lock_until: { type: DataTypes.DATE, allowNull: true }
+    mfa_lock_until: { type: DataTypes.DATE, allowNull: true },
+    mfa_required: { type: DataTypes.BOOLEAN, defaultValue: false }
   }, {
     tableName: 'usuarios',
     timestamps: false

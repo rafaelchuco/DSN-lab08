@@ -77,5 +77,28 @@ async function assignRole(req, res) {
   return res.status(201).json(ur);
 }
 
-module.exports = { listUsers, getUser, createUser, updateUser, deleteUser, assignRole, getMe };
+async function setMfaRequired(req, res) {
+  const userId = req.params.id;
+  const { required } = req.body;
+  if (typeof required !== 'boolean') return res.status(400).json({ error: 'Campo required debe ser booleano' });
+
+  const user = await db.User.findByPk(userId);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  user.mfa_required = required;
+  await user.save();
+
+  await logAction({
+    usuario_id: req.userId,
+    action: required ? 'mfa_required_enabled' : 'mfa_required_disabled',
+    resource_type: 'User',
+    resource_id: user.id,
+    details: { target_email: user.email, required },
+    ip: req.ip
+  });
+
+  return res.json({ id: user.id, email: user.email, mfa_required: user.mfa_required });
+}
+
+module.exports = { listUsers, getUser, createUser, updateUser, deleteUser, assignRole, getMe, setMfaRequired };
 

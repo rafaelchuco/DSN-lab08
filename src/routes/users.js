@@ -212,4 +212,40 @@ router.delete('/:id', auth, requireRole('Admin'), ctrl.deleteUser);
  */
 router.post('/:id/roles', auth, requireRole('Admin'), ctrl.assignRole);
 
+/**
+ * @swagger
+ * /api/users/{id}/mfa-required:
+ *   put:
+ *     summary: Activar o desactivar requisito de MFA para un usuario (Solo Admin)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - required
+ *             properties:
+ *               required:
+ *                 type: boolean
+ *                 description: Si true, el usuario debe configurar MFA en su dashboard
+ *     responses:
+ *       200:
+ *         description: Estado de requisito MFA actualizado
+ *       403:
+ *         description: Requiere rol Admin
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.put('/:id/mfa-required', auth, requireRole('Admin'), ctrl.setMfaRequired);
+
 module.exports = router;
