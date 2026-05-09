@@ -41,6 +41,20 @@ router.get('/', auth, permit('select'), ctrl.listProducts);
 
 /**
  * @swagger
+ * /api/products/stores:
+ *   get:
+ *     summary: Obtener lista de tiendas disponibles
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de tiendas únicas
+ */
+router.get('/stores/list', auth, ctrl.listStores);
+
+/**
+ * @swagger
  * /api/products/{id}:
  *   get:
  *     summary: Obtener producto por ID

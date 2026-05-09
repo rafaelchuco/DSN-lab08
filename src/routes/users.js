@@ -248,4 +248,29 @@ router.post('/:id/roles', auth, requireRole('Admin'), ctrl.assignRole);
  */
 router.put('/:id/mfa-required', auth, requireRole('Admin'), ctrl.setMfaRequired);
 
+/**
+ * @swagger
+ * /api/users/{id}/mfa-unlock:
+ *   post:
+ *     summary: Desbloquear MFA bloqueado por intentos fallidos
+ *     tags: [Users]
+ *     description: Admin solamente. Desbloqueea el MFA de un usuario que está bloqueado temporalmente.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: MFA desbloqueado exitosamente
+ *       403:
+ *         description: Requiere rol Admin
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.post('/:id/mfa-unlock', auth, requireRole('Admin'), ctrl.unlockMfa);
+
 module.exports = router;

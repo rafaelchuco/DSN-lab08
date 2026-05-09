@@ -1,7 +1,34 @@
 
 # TechStore — Sistema de Gestión de Inventario
 
-Este repositorio contiene una implementación de referencia (esqueleto) para el backend y un scaffold de frontend del proyecto TechStore: una aplicación web para gestionar inventario con controles de seguridad (autenticación MFA, RBAC y ABAC) y auditoría.
+![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=flat&logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat&logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat)
+
+> Aplicación web fullstack para gestión de inventario con seguridad avanzada: autenticación MFA (TOTP), control de acceso basado en roles (RBAC), control de acceso basado en atributos (ABAC) y auditoría completa de acciones.
+
+---
+
+## Tabla de Contenidos
+
+1. [Caso de Estudio](#caso-de-estudio)
+2. [Características](#características)
+3. [Stack Tecnológico](#stack-tecnológico)
+4. [Arquitectura del Sistema](#arquitectura-del-sistema)
+5. [Estructura del Proyecto](#estructura-del-proyecto)
+6. [Modelos de Datos](#modelos-de-datos)
+7. [Flujo de Autenticación](#flujo-de-autenticación)
+8. [Autorización: RBAC y ABAC](#autorización-rbac-y-abac)
+9. [API — Endpoints](#api--endpoints)
+10. [Inicio Rápido con Docker](#inicio-rápido-con-docker)
+11. [Desarrollo Local](#desarrollo-local)
+12. [Variables de Entorno](#variables-de-entorno)
+13. [Usuarios de Prueba](#usuarios-de-prueba)
+14. [Notas de Seguridad](#notas-de-seguridad)
+
+---
 
 **Contenido del README:**
 - Caso de Estudio (planteamiento)

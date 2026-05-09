@@ -1,6 +1,28 @@
 const db = require('../models');
 const { logAction } = require('../utils/logger');
 
+async function listStores(req, res) {
+  try {
+    // Obtener todas las tiendas únicas de la tabla de usuarios
+    const users = await db.User.findAll({
+      attributes: ['tienda_id'],
+      where: { tienda_id: { [db.Sequelize.Op.not]: null } },
+      raw: true,
+      group: ['tienda_id']
+    });
+    
+    const stores = users
+      .map(u => u.tienda_id)
+      .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
+      .sort();
+    
+    return res.json({ stores });
+  } catch (err) {
+    console.error('Error listStores:', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 async function listProducts(req, res) {
   // If Admin or Auditor, return all; otherwise scope to user's tienda
   const abac = req._abac || {};
@@ -87,4 +109,4 @@ async function deleteProduct(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { listProducts, getProduct, createProduct, updateProduct, deleteProduct };
+module.exports = { listStores, listProducts, getProduct, createProduct, updateProduct, deleteProduct };

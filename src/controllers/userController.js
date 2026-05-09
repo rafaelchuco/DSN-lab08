@@ -21,14 +21,35 @@ async function getMe(req, res) {
 
 async function listUsers(req, res) {
   const users = await db.User.findAll({ attributes: { exclude: ['passwordHash', 'mfa_secret'] } });
-  return res.json(users);
+  const usersWithRoles = await Promise.all(users.map(async user => {
+    const userRoles = await db.UserRole.findAll({ where: { usuario_id: user.id } });
+    const roleIds = userRoles.map(r => r.rol_id);
+    let roles = [];
+    if (roleIds.length) {
+      const roleRecords = await db.Role.findAll({ where: { id: roleIds }, attributes: ['id', 'nombre'] });
+      roles = roleRecords.map(r => r.nombre);
+    }
+    const u = user.toJSON();
+    u.roles = roles;
+    return u;
+  }));
+  return res.json(usersWithRoles);
 }
 
 async function getUser(req, res) {
   const id = req.params.id;
   const user = await db.User.findByPk(id, { attributes: { exclude: ['passwordHash', 'mfa_secret'] } });
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-  return res.json(user);
+  const userRoles = await db.UserRole.findAll({ where: { usuario_id: user.id } });
+  const roleIds = userRoles.map(r => r.rol_id);
+  let roles = [];
+  if (roleIds.length) {
+    const roleRecords = await db.Role.findAll({ where: { id: roleIds }, attributes: ['id', 'nombre'] });
+    roles = roleRecords.map(r => r.nombre);
+  }
+  const u = user.toJSON();
+  u.roles = roles;
+  return res.json(u);
 }
 
 async function createUser(req, res) {
@@ -100,5 +121,27 @@ async function setMfaRequired(req, res) {
   return res.json({ id: user.id, email: user.email, mfa_required: user.mfa_required });
 }
 
-module.exports = { listUsers, getUser, createUser, updateUser, deleteUser, assignRole, getMe, setMfaRequired };
+async function unlockMfa(req, res) {
+  const userId = req.params.id;
+  
+  const user = await db.User.findByPk(userId);
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  user.mfa_failed_attempts = 0;
+  user.mfa_lock_until = null;
+  await user.save();
+
+  await logAction({
+    usuario_id: req.userId,
+    action: 'mfa_unlock',
+    resource_type: 'User',
+    resource_id: user.id,
+    details: { target_email: user.email },
+    ip: req.ip
+  });
+
+  return res.json({ id: user.id, email: user.email, mfa_failed_attempts: 0, mfa_lock_until: null });
+}
+
+module.exports = { listUsers, getUser, createUser, updateUser, deleteUser, assignRole, getMe, setMfaRequired, unlockMfa };
 

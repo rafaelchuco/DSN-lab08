@@ -88,6 +88,19 @@ export default function Users({ token, roles }) {
     }
   }
 
+  async function unlockMfa(userId) {
+    try {
+      await axios.post(`/api/users/${userId}/mfa-unlock`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      alert('MFA desbloqueado exitosamente')
+      fetchData()
+    } catch (err) {
+      alert(err.response?.data?.error || err.message)
+    }
+  }
+
   if (!roles.includes('Admin')) {
     return <div className="access-denied">Solo Admin puede gestionar usuarios</div>
   }
@@ -155,6 +168,7 @@ export default function Users({ token, roles }) {
               <th>ID</th>
               <th>Email</th>
               <th>Nombre</th>
+              <th>Rol</th>
               <th>Tienda</th>
               <th>MFA</th>
               <th>Req. MFA</th>
@@ -168,8 +182,15 @@ export default function Users({ token, roles }) {
                 <td>{user.id}</td>
                 <td>{user.email}</td>
                 <td>{user.nombre_completo}</td>
+                <td>{user.roles && user.roles.length ? user.roles.join(', ') : '-'}</td>
                 <td>{user.tienda_id || '-'}</td>
-                <td>{user.mfa_enabled ? '✅' : '❌'}</td>
+                <td>
+                  {user.mfa_lock_until && new Date(user.mfa_lock_until) > new Date() ? (
+                    <span title="Bloqueado por intentos fallidos">🔒 Bloqueado</span>
+                  ) : (
+                    user.mfa_enabled ? '✅' : '❌'
+                  )}
+                </td>
                 <td>{user.mfa_required ? '✅' : '❌'}</td>
                 <td>
                   <span className={`badge ${user.activo ? 'active' : 'inactive'}`}>
@@ -177,6 +198,15 @@ export default function Users({ token, roles }) {
                   </span>
                 </td>
                 <td className="actions">
+                  {user.mfa_lock_until && new Date(user.mfa_lock_until) > new Date() && (
+                    <button
+                      onClick={() => unlockMfa(user.id)}
+                      className="btn-unlock-mfa"
+                      title="Desbloquear MFA"
+                    >
+                      🔓 Desbloquear MFA
+                    </button>
+                  )}
                   <select
                     onChange={(e) => e.target.value && assignRole(user.id, parseInt(e.target.value))}
                     defaultValue=""
