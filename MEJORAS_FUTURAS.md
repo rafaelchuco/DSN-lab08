@@ -1,753 +1,420 @@
-# 📋 Mejoras Futuras - TechStore
+# TechStore — Roadmap y Mejoras Pendientes
 
-Este documento describe las mejoras opcionales recomendadas para expandir y fortalecer el proyecto TechStore. El proyecto actual cumple al 100% con los requisitos del caso de estudio, pero estas mejoras agregarían valor adicional para un entorno de producción.
+![Estado](https://img.shields.io/badge/Proyecto-En_Producción-blue?style=flat)
 
----
-
-## 1. 🔐 Contador de Intentos MFA
-
-### Descripción
-Agregar un límite explícito de 3 intentos para códigos MFA fallidos, bloqueando temporalmente la cuenta después de exceder el límite.
-
-### Estado Actual
-- El sistema valida códigos MFA correctamente
-- No hay límite explícito de intentos fallidos para MFA
-- Los intentos de login sí tienen límite (5 intentos)
-
-### Implementación Sugerida
-
-**Cambios en el modelo User:**
-```javascript
-// src/models/user.js
-mfa_failed_attempts: { type: DataTypes.INTEGER, defaultValue: 0 },
-mfa_lock_until: { type: DataTypes.DATE, allowNull: true }
-```
-
-**Cambios en authController.js:**
-```javascript
-async function mfaVerify(req, res) {
-  const { token, code } = req.body;
-  const payload = jwt.verify(token, config.jwtSecret);
-  const user = await db.User.findByPk(payload.sub);
-  
-  // Verificar bloqueo MFA
-  if (user.mfa_lock_until && new Date(user.mfa_lock_until) > new Date()) {
-    return res.status(423).json({ 
-      error: 'MFA bloqueado temporalmente. Intenta más tarde.' 
-    });
-  }
-  
-  const ok = verifyTOTP(user.mfa_secret, code);
-  
-  if (!ok) {
-    user.mfa_failed_attempts = (user.mfa_failed_attempts || 0) + 1;
-    
-    if (user.mfa_failed_attempts >= 3) {
-      user.mfa_lock_until = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-      await user.save();
-      return res.status(423).json({ 
-        error: 'Demasiados intentos fallidos. Cuenta MFA bloqueada por 15 minutos.' 
-      });
-    }
-    
-    await user.save();
-    return res.status(401).json({ 
-      error: `Código MFA inválido. ${3 - user.mfa_failed_attempts} intentos restantes.` 
-    });
-  }
-  
-  // Reset en caso de éxito
-  user.mfa_failed_attempts = 0;
-  user.mfa_lock_until = null;
-  await user.save();
-  
-  // Continuar con token completo...
-}
-```
-
-**Beneficios:**
-- ✅ Protección contra ataques de fuerza bruta en MFA
-- ✅ Consistencia con el límite de intentos de login
-- ✅ Mejora la seguridad general del sistema
-
-**Esfuerzo estimado:** 2-3 horas
+> Este documento lista las mejoras **pendientes de implementar**. Las mejoras ya completadas están documentadas en [GUIA_MEJORAS.md](./GUIA_MEJORAS.md).
 
 ---
 
-## 2. 🧪 Tests Automatizados
+## Estado Actual del Proyecto
 
-### Descripción
-Implementar suite completa de tests para los 4 escenarios principales del caso de estudio y cobertura adicional.
+### Ya Implementado ✅
 
-### Estado Actual
-- No hay tests automatizados implementados
-- La aplicación ha sido probada manualmente
+| Mejora | Descripción |
+|--------|-------------|
+| ✅ Contador de intentos MFA | Bloqueo de 15 min tras 3 intentos fallidos |
+| ✅ Soporte PostgreSQL | Multi-dialecto SQLite/PostgreSQL |
+| ✅ Documentación Swagger | API interactiva en `/api-docs` |
+| ✅ Frontend completo | 7 páginas con navegación por rol |
+| ✅ Docker Compose | 3 servicios orquestados |
+| ✅ Auditoría de acciones | Tabla `audit_logs` con todos los eventos |
 
-### Implementación Sugerida
+### Pendiente de Implementar 🔲
 
-**Dependencias a agregar:**
-```json
-{
-  "devDependencies": {
-    "jest": "^29.5.0",
-    "supertest": "^6.3.3",
-    "@types/jest": "^29.5.0"
-  }
-}
+| # | Mejora | Prioridad | Esfuerzo estimado |
+|---|--------|:---------:|:-----------------:|
+| 1 | Tests automatizados | Alta | 1-2 semanas |
+| 2 | Rate limiting global | Alta | 2-4 horas |
+| 3 | Refresh tokens / sesiones largas | Media | 1 semana |
+| 4 | Notificaciones por email (login sospechoso) | Media | 3-5 días |
+| 5 | Paginación en tablas del frontend | Media | 1-2 días |
+| 6 | Modo oscuro en el frontend | Baja | 1-2 días |
+| 7 | Exportación de reportes (PDF/Excel) | Baja | 1 semana |
+| 8 | Migraciones Sequelize CLI | Baja | 2-3 días |
+
+---
+
+## Detalle de Mejoras Pendientes
+
+---
+
+### 1. Tests Automatizados (Prioridad Alta)
+
+**Descripción:** Implementar una suite de tests automatizados que valide los 4 escenarios del caso de estudio y sirva como red de seguridad ante futuros cambios.
+
+**Por qué es prioritario:** Actualmente las políticas RBAC y ABAC solo se prueban manualmente. Un bug en el motor de políticas podría pasar desapercibido.
+
+**Stack sugerido:**
+
+```bash
+npm install --save-dev jest supertest
 ```
 
-**Estructura de tests:**
+**Estructura propuesta:**
+
 ```
-/tests
-  /unit
-    - auth.test.js
-    - rbac.test.js
-    - abac.test.js
-    - policy-engine.test.js
-  /integration
-    - login-mfa.test.js
-    - roles-crud.test.js
-    - products-crud.test.js
-    - scenarios.test.js
+tests/
+├── unit/
+│   ├── policy-engine.test.js    # Tests del motor ABAC
+│   ├── mfa.utils.test.js        # Tests de generación/verificación TOTP
+│   └── auth.validation.test.js  # Tests de validación de contraseña
+└── integration/
+    ├── auth.test.js             # Login, registro, MFA, bloqueos
+    ├── rbac.test.js             # Permisos por rol en cada endpoint
+    ├── abac.test.js             # Políticas de productos por tienda/premium
+    └── audit.test.js            # Verificar que las acciones se registran
 ```
 
-**Ejemplo: tests/integration/scenarios.test.js**
+**Ejemplo de test ABAC:**
+
 ```javascript
-const request = require('supertest');
-const app = require('../src/server');
-const db = require('../src/models');
+describe('ABAC — Políticas de Productos', () => {
+  test('Empleado solo puede actualizar stock', async () => {
+    const token = await loginAs('empleado@techstore.com', 'Empleado123!');
+    const producto = await crearProductoDeTest({ tienda_id: 'Lima' });
 
-describe('Escenarios del Caso de Estudio', () => {
-  beforeAll(async () => {
-    await db.sequelize.sync({ force: true });
-    // Seed test data
+    // Actualizar stock → debe funcionar
+    const resStock = await request(app)
+      .put(`/api/products/${producto.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ stock: 99 });
+    expect(resStock.status).toBe(200);
+
+    // Actualizar precio → debe fallar
+    const resPrecio = await request(app)
+      .put(`/api/products/${producto.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ precio: 999 });
+    expect(resPrecio.status).toBe(403);
   });
 
-  describe('Escenario 1: Login con MFA', () => {
-    test('Usuario con credenciales correctas solicita código MFA', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'gerente@techstore.com', password: 'Test1234!' });
-      
-      expect(res.status).toBe(200);
-      expect(res.body.mfa_required).toBe(true);
-      expect(res.body.token).toBeDefined();
-    });
+  test('Gerente no puede eliminar productos premium', async () => {
+    const token = await loginAs('gerente@techstore.com', 'Gerente123!');
+    const premium = await crearProductoDeTest({ tienda_id: 'Lima', es_premium: true });
 
-    test('Código MFA correcto otorga acceso completo', async () => {
-      // ... implementación
-    });
+    const res = await request(app)
+      .delete(`/api/products/${premium.id}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
   });
 
-  describe('Escenario 2: RBAC - Intento no autorizado', () => {
-    test('Empleado no puede crear roles', async () => {
-      const token = await getTokenForRole('Empleado');
-      const res = await request(app)
-        .post('/api/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ nombre: 'NuevoRol', descripcion: 'Test' });
-      
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('Admin');
-    });
-  });
+  test('Gerente no puede ver productos de otra tienda', async () => {
+    const token = await loginAs('gerente@techstore.com', 'Gerente123!');
+    // gerente es de Lima, producto es de Arequipa
+    const productoBajada = await crearProductoDeTest({ tienda_id: 'Arequipa' });
 
-  describe('Escenario 3: ABAC - Gerente modifica producto', () => {
-    test('Gerente puede modificar precio de producto en su tienda', async () => {
-      const token = await getTokenForUser('gerente_lima@techstore.com');
-      const producto = await createTestProduct({ tienda_id: 'Lima', es_premium: true });
-      
-      const res = await request(app)
-        .put(`/api/products/${producto.id}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ precio: 1500 });
-      
-      expect(res.status).toBe(200);
-      expect(res.body.precio).toBe('1500.00');
-    });
-
-    test('Gerente NO puede modificar categoría', async () => {
-      const token = await getTokenForUser('gerente_lima@techstore.com');
-      const producto = await createTestProduct({ tienda_id: 'Lima' });
-      
-      const res = await request(app)
-        .put(`/api/products/${producto.id}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ categoria: 'Nueva' });
-      
-      expect(res.status).toBe(403);
-    });
-  });
-
-  describe('Escenario 4: ABAC - Empleado intenta eliminar', () => {
-    test('Empleado no puede eliminar productos', async () => {
-      const token = await getTokenForRole('Empleado');
-      const producto = await createTestProduct({ tienda_id: 'Lima' });
-      
-      const res = await request(app)
-        .delete(`/api/products/${producto.id}`)
-        .set('Authorization', `Bearer ${token}`);
-      
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('denegado');
-    });
+    const res = await request(app)
+      .get('/api/products')
+      .set('Authorization', `Bearer ${token}`);
+    
+    const ids = res.body.map(p => p.id);
+    expect(ids).not.toContain(productoBajada.id);
   });
 });
 ```
 
-**package.json scripts:**
+**Scripts a agregar en `package.json`:**
+
 ```json
 {
   "scripts": {
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterFramework": ["./tests/setup.js"]
   }
 }
 ```
 
 **Beneficios:**
-- ✅ Validación automática de reglas RBAC y ABAC
-- ✅ Detección temprana de regresiones
-- ✅ Documentación viva del comportamiento esperado
-- ✅ Confianza para refactorizar código
-
-**Esfuerzo estimado:** 1-2 semanas
+- Detección automática de regresiones en RBAC/ABAC
+- Documentación viva del comportamiento esperado
+- Confianza para refactorizar el motor de políticas
+- Base para CI/CD pipeline
 
 ---
 
-## 3. 🎨 Frontend Mejorado
+### 2. Rate Limiting Global (Prioridad Alta)
 
-### Descripción
-Expandir el frontend actual con gestión completa de roles/usuarios, dashboard administrativo y mejores UX/UI.
+**Descripción:** Agregar límite de peticiones por IP para proteger los endpoints públicos de ataques de fuerza bruta y abuso de la API.
 
-### Estado Actual
-- Frontend básico funcional (Login, MFA, Productos)
-- No hay gestión de usuarios ni roles desde UI
-- No hay dashboard o analytics
+**Por qué es prioritario:** Actualmente cualquier IP puede hacer miles de peticiones por segundo a `/api/auth/login` o `/api/auth/register`.
 
-### Implementación Sugerida
+**Implementación:**
 
-**Nuevas páginas/componentes:**
-
-```
-client/src/
-  pages/
-    ├── Dashboard.jsx        # Panel principal con métricas
-    ├── Users.jsx            # CRUD de usuarios
-    ├── Roles.jsx            # CRUD de roles
-    ├── AuditLogs.jsx        # Visualización de auditoría
-    ├── Profile.jsx          # Perfil de usuario + MFA setup
-    └── Reports.jsx          # Reportes por tienda/categoría
-  components/
-    ├── Layout.jsx           # Layout con sidebar/navbar
-    ├── Sidebar.jsx          # Navegación lateral
-    ├── ProtectedRoute.jsx   # HOC para rutas protegidas
-    ├── RoleGuard.jsx        # Mostrar/ocultar por rol
-    └── DataTable.jsx        # Tabla reutilizable
+```bash
+npm install express-rate-limit
 ```
 
-**Dashboard.jsx - Ejemplo:**
-```jsx
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+```javascript
+// src/middlewares/rateLimiter.js
+const rateLimit = require('express-rate-limit');
 
-export default function Dashboard({ token, user, roles }) {
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    lowStock: 0,
-    premiumProducts: 0,
-    totalUsers: 0
+// Límite general para toda la API
+exports.apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,                  // 100 peticiones por IP
+  message: { error: 'Demasiadas peticiones. Intenta en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Límite más estricto para autenticación
+exports.authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,                   // 10 intentos de login por IP
+  message: { error: 'Demasiados intentos de autenticación.' }
+});
+```
+
+```javascript
+// En server.js
+const { apiLimiter, authLimiter } = require('./middlewares/rateLimiter');
+
+app.use('/api/', apiLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+```
+
+**Esfuerzo estimado:** 2-4 horas
+
+---
+
+### 3. Refresh Tokens / Sesiones Largas (Prioridad Media)
+
+**Descripción:** Implementar un sistema de refresh tokens para que los usuarios puedan mantener sesiones largas sin necesidad de volver a autenticarse con MFA.
+
+**Flujo propuesto:**
+
+```
+Login exitoso
+  └─ Emite: access_token (vigencia corta: 15 min)
+             refresh_token (vigencia larga: 7 días, almacenado en DB)
+
+Access token expirado
+  └─ Cliente envía refresh_token
+       └─ Backend emite nuevo access_token (sin pedir MFA de nuevo)
+
+Logout
+  └─ Invalida el refresh_token en DB
+```
+
+**Cambios requeridos:**
+- Nueva tabla `refresh_tokens` (token, usuario_id, expires_at, revoked)
+- Endpoint `POST /api/auth/refresh`
+- Endpoint `POST /api/auth/logout` (revoca el refresh token)
+- Configurar `access_token` con expiración corta (15min)
+
+**Esfuerzo estimado:** 1 semana
+
+---
+
+### 4. Notificaciones por Email (Prioridad Media)
+
+**Descripción:** Enviar alertas por email cuando ocurren eventos de seguridad: cuenta bloqueada, nuevo dispositivo, código MFA por email como alternativa a TOTP.
+
+**Eventos a notificar:**
+
+| Evento | Destinatario | Contenido |
+|--------|-------------|-----------|
+| Cuenta bloqueada (5 intentos) | Usuario | "Tu cuenta fue bloqueada. Si no fuiste tú, contáctanos." |
+| MFA bloqueado | Usuario | "3 intentos fallidos de MFA detectados." |
+| Login desde IP nueva | Usuario | "Nuevo acceso desde 192.168.x.x" |
+| Usuario creado | Admin | "Nuevo usuario registrado: email" |
+
+**Implementación sugerida:**
+
+```bash
+npm install nodemailer
+```
+
+```javascript
+// src/utils/mailer.js
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT || 587,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+exports.sendSecurityAlert = async ({ to, subject, message }) => {
+  await transporter.sendMail({
+    from: '"TechStore Security" <security@techstore.com>',
+    to,
+    subject,
+    html: `<p>${message}</p>`
+  });
+};
+```
+
+**Variables de entorno a agregar:**
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=noreply@techstore.com
+SMTP_PASS=app_password
+```
+
+**Esfuerzo estimado:** 3-5 días
+
+---
+
+### 5. Paginación en Tablas del Frontend (Prioridad Media)
+
+**Descripción:** Las tablas de Productos, Usuarios y Audit Logs actualmente cargan todos los registros. Con muchos datos esto es lento y consume memoria innecesariamente.
+
+**Cambios en el backend:**
+
+```javascript
+// GET /api/products?page=1&limit=20
+router.get('/', auth, abac('select'), async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
+
+  const { count, rows } = await Product.findAndCountAll({
+    where: /* filtros ABAC */,
+    limit,
+    offset,
+    order: [['fecha_creacion', 'DESC']]
   });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  res.json({
+    data: rows,
+    pagination: {
+      total: count,
+      page,
+      pages: Math.ceil(count / limit),
+      limit
+    }
+  });
+});
+```
 
-  async function fetchDashboardData() {
-    const [products, users] = await Promise.all([
-      axios.get('/api/products', { headers: { Authorization: `Bearer ${token}` } }),
-      roles.includes('Admin') ? 
-        axios.get('/api/users', { headers: { Authorization: `Bearer ${token}` } }) : 
-        null
-    ]);
+**Cambios en el frontend:**
 
-    setStats({
-      totalProducts: products.data.length,
-      lowStock: products.data.filter(p => p.stock < 10).length,
-      premiumProducts: products.data.filter(p => p.es_premium).length,
-      totalUsers: users?.data.length || 0
-    });
+Agregar controles de paginación en las tablas:
+```
+[← Anterior]  Página 2 de 15  [Siguiente →]
+```
+
+**Esfuerzo estimado:** 1-2 días
+
+---
+
+### 6. Modo Oscuro en el Frontend (Prioridad Baja)
+
+**Descripción:** Agregar soporte para modo oscuro usando variables CSS con preferencia del sistema (`prefers-color-scheme`).
+
+**Implementación:**
+
+```css
+/* styles.css */
+:root {
+  --bg-primary: #ffffff;
+  --text-primary: #1a1a2e;
+  --surface: #f5f5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a2e;
+    --text-primary: #e0e0e0;
+    --surface: #16213e;
   }
-
-  return (
-    <div className="dashboard">
-      <h1>Dashboard - {user.nombre_completo}</h1>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <h3>Total Productos</h3>
-          <p className="stat-number">{stats.totalProducts}</p>
-        </div>
-        <div className="stat-card alert">
-          <h3>Stock Bajo</h3>
-          <p className="stat-number">{stats.lowStock}</p>
-        </div>
-        <div className="stat-card">
-          <h3>Productos Premium</h3>
-          <p className="stat-number">{stats.premiumProducts}</p>
-        </div>
-        {roles.includes('Admin') && (
-          <div className="stat-card">
-            <h3>Total Usuarios</h3>
-            <p className="stat-number">{stats.totalUsers}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 ```
 
-**Mejoras UX/UI:**
-- 🎨 Librería de componentes (Material-UI, Ant Design o Chakra UI)
-- 📱 Diseño responsive móvil
-- 🌙 Modo oscuro
-- 📊 Gráficos con Chart.js o Recharts
-- 🔍 Búsqueda y filtros avanzados
-- 📄 Paginación en tablas
-- ⚡ Loading states y feedback visual
-- 🚨 Toasts/notificaciones
+**Toggle manual:** Agregar botón en el Layout para cambiar entre modo claro y oscuro, guardando la preferencia en `localStorage`.
 
-**Beneficios:**
-- ✅ Experiencia de usuario profesional
-- ✅ Gestión completa sin necesidad de APIs externas
-- ✅ Visualización de métricas de negocio
-- ✅ Reducción de errores operativos
-
-**Esfuerzo estimado:** 2-3 semanas
+**Esfuerzo estimado:** 1-2 días
 
 ---
 
-## 4. 🗄️ Base de Datos - PostgreSQL/MySQL
+### 7. Exportación de Reportes PDF/Excel (Prioridad Baja)
 
-### Descripción
-Migrar de SQLite a PostgreSQL o MySQL para entorno de producción con mejor rendimiento, concurrencia y características enterprise.
+**Descripción:** Permitir a Admin y Auditor exportar los datos de productos, usuarios y audit logs en formato PDF o Excel.
 
-### Estado Actual
-- SQLite funcional para desarrollo
-- No optimizado para múltiples conexiones concurrentes
-- Sin soporte para transacciones complejas a escala
+**Implementación sugerida:**
 
-### Implementación Sugerida
-
-**Opción A: PostgreSQL**
-
-**Dependencias:**
 ```bash
-npm install pg pg-hstore
+npm install exceljs pdfkit
 ```
 
-**config.js:**
 ```javascript
-module.exports = {
-  // ... resto de config
-  sequelize: {
-    dialect: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'techstore',
-    username: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || '',
-    pool: {
-      max: 10,
-      min: 2,
-      acquire: 30000,
-      idle: 10000
-    },
-    logging: process.env.NODE_ENV === 'development' ? console.log : false
+// GET /api/products/export?format=xlsx
+router.get('/export', auth, rbac(['Admin', 'Auditor']), async (req, res) => {
+  const products = await Product.findAll();
+  const format = req.query.format || 'xlsx';
+
+  if (format === 'xlsx') {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Productos');
+    sheet.columns = [
+      { header: 'Nombre', key: 'nombre' },
+      { header: 'Precio', key: 'precio' },
+      { header: 'Stock', key: 'stock' },
+      { header: 'Tienda', key: 'tienda_id' }
+    ];
+    products.forEach(p => sheet.addRow(p.toJSON()));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await workbook.xlsx.write(res);
   }
-};
+});
 ```
-
-**Docker Compose para desarrollo:**
-```yaml
-version: '3.8'
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: techstore
-      POSTGRES_USER: techstore_user
-      POSTGRES_PASSWORD: techstore_pass
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  backend:
-    build: .
-    depends_on:
-      - postgres
-    environment:
-      DB_HOST: postgres
-      DB_NAME: techstore
-      DB_USER: techstore_user
-      DB_PASSWORD: techstore_pass
-    ports:
-      - "4000:4000"
-
-volumes:
-  pgdata:
-```
-
-**Migraciones:**
-```javascript
-// migrations/001-initial-schema.js
-module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('usuarios', { /* ... */ });
-    await queryInterface.createTable('roles', { /* ... */ });
-    await queryInterface.createTable('usuario_roles', { /* ... */ });
-    await queryInterface.createTable('productos', { /* ... */ });
-    await queryInterface.createTable('audit_logs', { /* ... */ });
-    
-    // Índices para optimización
-    await queryInterface.addIndex('usuarios', ['email']);
-    await queryInterface.addIndex('productos', ['tienda_id']);
-    await queryInterface.addIndex('productos', ['es_premium']);
-    await queryInterface.addIndex('usuario_roles', ['usuario_id', 'rol_id']);
-  },
-  down: async (queryInterface) => {
-    await queryInterface.dropTable('audit_logs');
-    await queryInterface.dropTable('usuario_roles');
-    await queryInterface.dropTable('productos');
-    await queryInterface.dropTable('roles');
-    await queryInterface.dropTable('usuarios');
-  }
-};
-```
-
-**Opción B: MySQL**
-
-```javascript
-// Similar, cambiar dialect a 'mysql' y usar mysql2 como dependencia
-npm install mysql2
-```
-
-**Mejoras adicionales:**
-- 🔄 Implementar migraciones con Sequelize CLI
-- 📦 Backups automatizados
-- 🔍 Índices optimizados para consultas frecuentes
-- 📊 Views materializadas para reportes
-- 🔐 Cifrado de columnas sensibles
-
-**Beneficios:**
-- ✅ Mejor rendimiento en producción
-- ✅ Soporte para múltiples conexiones concurrentes
-- ✅ Características enterprise (replicación, clustering)
-- ✅ Mejor integridad referencial
-- ✅ Herramientas de administración robustas
 
 **Esfuerzo estimado:** 1 semana
 
 ---
 
-## 5. 📚 Documentación API - Swagger/OpenAPI
+### 8. Migraciones con Sequelize CLI (Prioridad Baja)
 
-### Descripción
-Agregar documentación interactiva de la API usando Swagger/OpenAPI para facilitar el desarrollo frontend y la integración.
+**Descripción:** Reemplazar `sequelize.sync({ alter: true })` por migraciones versionadas usando Sequelize CLI, lo cual es más seguro en producción.
 
-### Estado Actual
-- API funcional sin documentación formal
-- Endpoints documentados solo en README
-- Sin sandbox para pruebas
+**Por qué es importante para producción:** `alter: true` puede causar pérdida de datos en producción al modificar columnas existentes. Las migraciones son deterministas y reversibles.
 
-### Implementación Sugerida
+**Implementación:**
 
-**Dependencias:**
 ```bash
-npm install swagger-ui-express swagger-jsdoc
+npm install --save-dev sequelize-cli
+npx sequelize-cli init
+
+# Crear primera migración
+npx sequelize-cli migration:generate --name create-initial-schema
+
+# Ejecutar migraciones pendientes
+npx sequelize-cli db:migrate
+
+# Revertir última migración
+npx sequelize-cli db:migrate:undo
 ```
 
-**swagger.js:**
-```javascript
-const swaggerJsDoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
-
-const options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'TechStore API',
-      version: '1.0.0',
-      description: 'API para Sistema de Gestión de Inventario con RBAC y ABAC',
-      contact: {
-        name: 'TechStore Dev Team'
-      }
-    },
-    servers: [
-      { url: 'http://localhost:4000', description: 'Development' },
-      { url: 'https://api.techstore.com', description: 'Production' }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      },
-      schemas: {
-        User: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer' },
-            email: { type: 'string', format: 'email' },
-            nombre_completo: { type: 'string' },
-            tienda_id: { type: 'string' },
-            mfa_enabled: { type: 'boolean' },
-            activo: { type: 'boolean' },
-            fecha_creacion: { type: 'string', format: 'date-time' }
-          }
-        },
-        Product: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer' },
-            nombre: { type: 'string' },
-            descripcion: { type: 'string' },
-            precio: { type: 'number', format: 'decimal' },
-            stock: { type: 'integer' },
-            categoria: { type: 'string' },
-            tienda_id: { type: 'string' },
-            es_premium: { type: 'boolean' }
-          }
-        },
-        Role: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer' },
-            nombre: { type: 'string', enum: ['Admin', 'Gerente', 'Empleado', 'Auditor'] },
-            descripcion: { type: 'string' }
-          }
-        }
-      }
-    },
-    security: [{ bearerAuth: [] }]
-  },
-  apis: ['./src/routes/*.js']
-};
-
-const specs = swaggerJsDoc(options);
-
-module.exports = { swaggerUi, specs };
-```
-
-**server.js:**
-```javascript
-const { swaggerUi, specs } = require('./swagger');
-
-// Después de las rutas
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-```
-
-**Ejemplo de documentación en routes/auth.js:**
-```javascript
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Registrar nuevo usuario
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - nombre_completo
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 minLength: 8
- *                 description: Debe contener mayúscula, número y carácter especial
- *               nombre_completo:
- *                 type: string
- *               tienda_id:
- *                 type: string
- *     responses:
- *       201:
- *         description: Usuario creado exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 email:
- *                   type: string
- *       400:
- *         description: Datos inválidos o contraseña no cumple política
- *       409:
- *         description: Email ya registrado
- */
-router.post('/register', auth.register);
-
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Iniciar sesión
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login exitoso
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - type: object
- *                   properties:
- *                     token:
- *                       type: string
- *                       description: JWT token completo
- *                 - type: object
- *                   properties:
- *                     mfa_required:
- *                       type: boolean
- *                       example: true
- *                     token:
- *                       type: string
- *                       description: JWT temporal para MFA
- *       401:
- *         description: Credenciales inválidas
- *       423:
- *         description: Cuenta bloqueada temporalmente
- */
-router.post('/login', auth.login);
-```
-
-**Documentar políticas ABAC:**
-```javascript
-/**
- * @swagger
- * /api/products/{id}:
- *   put:
- *     summary: Actualizar producto
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *               precio:
- *                 type: number
- *               stock:
- *                 type: integer
- *               categoria:
- *                 type: string
- *                 description: Solo Admin puede modificar
- *     responses:
- *       200:
- *         description: Producto actualizado
- *       403:
- *         description: >
- *           Acceso denegado por políticas ABAC:
- *           - Empleado solo puede actualizar 'stock'
- *           - Gerente no puede modificar 'categoria'
- *           - Solo productos de su tienda
- */
-router.put('/:id', auth, permit('update'), ctrl.updateProduct);
-```
-
-**Acceso a documentación:**
-```
-http://localhost:4000/api-docs
-```
-
-**Beneficios:**
-- ✅ Documentación siempre actualizada
-- ✅ Sandbox interactivo para probar endpoints
-- ✅ Generación automática de clientes API
-- ✅ Onboarding más rápido para nuevos developers
-- ✅ Estándar de industria (OpenAPI 3.0)
-
-**Esfuerzo estimado:** 1 semana
+**Esfuerzo estimado:** 2-3 días
 
 ---
 
-## 📊 Priorización Recomendada
+## Criterios de Priorización
 
-### Alto Impacto / Bajo Esfuerzo
-1. **Contador de intentos MFA** - 2-3 horas
-2. **Documentación API** - 1 semana
-
-### Alto Impacto / Medio Esfuerzo
-3. **Tests automatizados** - 1-2 semanas
-4. **Base de datos PostgreSQL** - 1 semana
-
-### Medio Impacto / Alto Esfuerzo
-5. **Frontend mejorado** - 2-3 semanas
+```
+Alta    → Impacta seguridad o es requisito para producción real
+Media   → Mejora la experiencia o reduce deuda técnica
+Baja    → Nice to have, no bloquea ningún flujo crítico
+```
 
 ---
 
-## 🎯 Roadmap Sugerido
+## Referencias
 
-### Sprint 1 (1 semana)
-- ✅ Contador de intentos MFA
-- ✅ Documentación Swagger básica
-
-### Sprint 2 (2 semanas)
-- ✅ Tests de escenarios principales
-- ✅ Migración a PostgreSQL
-
-### Sprint 3-4 (3 semanas)
-- ✅ Suite completa de tests
-- ✅ Frontend: Dashboard y gestión de usuarios
-
-### Sprint 5 (1 semana)
-- ✅ Frontend: Gestión de roles y auditoría
-- ✅ Refinamiento y bug fixes
-
----
-
-## 📝 Notas Finales
-
-- Todas las mejoras son **opcionales** y no afectan el cumplimiento actual del 100%
-- El proyecto está **listo para evaluación** en su estado actual
-- Estas mejoras preparan el sistema para un entorno de **producción real**
-- Se recomienda implementarlas en el orden sugerido para maximizar el ROI
-
-**Fecha de última actualización:** 6 de mayo de 2026
+| Documento | Descripción |
+|----------|-------------|
+| [GUIA_MEJORAS.md](./GUIA_MEJORAS.md) | Mejoras ya implementadas |
+| [README.md](./README.md) | Documentación principal |
+| [USUARIOS_PRUEBA.md](./USUARIOS_PRUEBA.md) | Escenarios de prueba |
